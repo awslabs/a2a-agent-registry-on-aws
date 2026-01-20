@@ -9,3 +9,4 @@ infrastructure/cdk.out
 **/__pycache__
 .kiro
 **/uv.lock
+a2a-agent-registry-on-aws.drawio

@@ -34,36 +34,6 @@ The A2A Agent Registry is a centralized service for registering, discovering, an
 
 Agents register their capabilities using standardized agent cards, and other agents or applications can discover them through semantic search or skill-based queries.
 
-## 🏗️ Architecture
-
-```
-                                        ┌──────────────────┐
-                                        │ Your Agentic App │
-                                        └────────┬─────────┘
-                                                 │
-┌─────────────┐                         ┌────────▼─────────┐
-│   Web UI    │                         │    Python SDK    │
-└──────┬──────┘                         └────────┬─────────┘
-       │                                         │
-       └─────────────────┬───────────────────────┘
-                         │
-                  ┌──────▼──────┐
-                  │ API Gateway │
-                  │  (IAM Auth) │
-                  └──────┬──────┘
-                         │
-                  ┌──────▼──────┐
-                  │   Lambda    │
-                  └──────┬──────┘
-                         │
-            ┌────────────┼────────────┐
-            │                         │
-     ┌──────▼──────┐          ┌───────▼───────┐
-     │  S3 Vectors │          │    Bedrock    │
-     │  (Storage)  │          │  (Embeddings) │
-     └─────────────┘          └───────────────┘
-```
-
 ## 🎬 Web UI Demo
 
 ![Web UI Demo](web-ui/web-ui.gif)
@@ -73,6 +43,21 @@ The demo showcases:
 - **See all agents** — Browse the complete list of registered agents
 - **Search with plain text** — Find agents using natural language queries
 - **Search by skill name** — Filter agents by specific skills
+
+## 🏗️ Architecture
+
+![Architecture](a2a-agent-registry-on-aws.jpg)
+
+When you deploy `AgentRegistryStack`, you get an out-of-the-box agent registry:
+
+- **API Gateway** — RESTful API with IAM authentication for secure access
+- **Lambda** — Serverless compute handling agent CRUD operations and search queries
+- **S3 Vectors** — Vector storage for agent embeddings enabling semantic search
+- **Amazon Bedrock** — Titan embeddings model for converting agent descriptions to vectors
+
+The **Python SDK** (`client/`) provides a ready-to-use client library with retry logic and IAM authentication.
+
+Optionally, deploy `AgentRegistryWebUI` for a React-based web interface with Cognito authentication — connect it to your SSO provider or invite users directly from the Cognito console using their email address.
 
 ## 🚀 Quick Start
 
