@@ -59,7 +59,7 @@ const AgentEditModal: React.FC<AgentEditModalProps> = ({
         version: initialAgentCard.version || '',
         url: initialAgentCard.url || '',
         skills: Array.isArray(initialAgentCard.skills) 
-          ? initialAgentCard.skills.map(skill => typeof skill === 'string' ? skill : skill.name || skill.id)
+          ? initialAgentCard.skills.map(skill => skill.name || skill.id)
           : [],
         preferredTransport: initialAgentCard.preferredTransport || 'JSONRPC',
         streaming: initialAgentCard.capabilities?.streaming || false,
@@ -151,11 +151,17 @@ const AgentEditModal: React.FC<AgentEditModalProps> = ({
       
       // Compare skills arrays
       const currentSkills = Array.isArray(initialAgentCard.skills) 
-        ? initialAgentCard.skills.map(skill => typeof skill === 'string' ? skill : skill.name || skill.id)
+        ? initialAgentCard.skills.map(skill => skill.name || skill.id)
         : [];
       
       if (JSON.stringify(formData.skills.sort()) !== JSON.stringify(currentSkills.sort())) {
-        updateData.skills = formData.skills;
+        // Convert string skills to AgentSkill format for the API
+        updateData.skills = formData.skills.map((skill, index) => ({
+          id: `skill-${index}`,
+          name: skill,
+          description: skill,
+          tags: [skill.toLowerCase()]
+        }));
       }
       
       // Compare streaming capability

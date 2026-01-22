@@ -1,7 +1,7 @@
 /**
  * AgentCard validation utilities using @a2a-js/sdk types as source of truth
  */
-import type { AgentCard, AgentSkill, AgentCapabilities } from '@a2a-js/sdk';
+import type { AgentCard, AgentSkill } from '@a2a-js/sdk';
 
 export interface ValidationResult {
   isValid: boolean;

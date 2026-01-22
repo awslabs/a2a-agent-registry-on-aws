@@ -38,7 +38,7 @@ const AgentRegistrationModal: React.FC<AgentRegistrationModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Sample AgentCard for reference (simplified to work with current validation)
+  // Sample AgentCard for reference (A2A protocol compliant)
   const sampleAgentCard = {
     name: "Recipe Assistant Agent",
     description: "An AI agent that helps users find and prepare recipes based on available ingredients",
@@ -46,83 +46,26 @@ const AgentRegistrationModal: React.FC<AgentRegistrationModalProps> = ({
     url: "https://recipe-agent.example.com/api/v1",
     protocolVersion: "0.3.0",
     preferredTransport: "JSONRPC",
-    skills: ["recipe-search", "nutrition-info", "cooking", "food-planning"],
+    skills: [
+      {
+        id: "recipe-search",
+        name: "Recipe Search",
+        description: "Search for recipes by ingredients or cuisine",
+        tags: ["recipes", "search", "cooking"]
+      },
+      {
+        id: "nutrition-info",
+        name: "Nutrition Information",
+        description: "Get nutritional information for recipes",
+        tags: ["nutrition", "health", "food"]
+      }
+    ],
     capabilities: {
       streaming: false,
       pushNotifications: true
     },
     defaultInputModes: ["text/plain"],
     defaultOutputModes: ["text/plain", "application/json"]
-  };
-
-  // Validate AgentCard JSON structure
-  const validateAgentCard = (jsonString: string): { isValid: boolean; agentCard?: AgentCard; error?: string } => {
-    try {
-      const parsed = JSON.parse(jsonString);
-      
-      // Required fields validation
-      const requiredFields = ['name', 'description', 'version', 'url', 'protocolVersion', 'preferredTransport', 'skills', 'capabilities', 'defaultInputModes', 'defaultOutputModes'];
-      const missingFields = requiredFields.filter(field => !(field in parsed));
-      
-      if (missingFields.length > 0) {
-        return {
-          isValid: false,
-          error: `Missing required fields: ${missingFields.join(', ')}`
-        };
-      }
-
-      // Validate skills array (currently expecting array of strings)
-      if (!Array.isArray(parsed.skills)) {
-        return {
-          isValid: false,
-          error: 'Skills must be an array'
-        };
-      }
-
-      // Validate each skill (currently expecting strings, not objects)
-      for (let i = 0; i < parsed.skills.length; i++) {
-        const skill = parsed.skills[i];
-        if (typeof skill !== 'string' || !skill.trim()) {
-          return {
-            isValid: false,
-            error: `Skill at index ${i} must be a non-empty string`
-          };
-        }
-      }
-
-      // Validate capabilities
-      if (typeof parsed.capabilities !== 'object' || parsed.capabilities === null) {
-        return {
-          isValid: false,
-          error: 'Capabilities must be an object'
-        };
-      }
-
-      if (typeof parsed.capabilities.streaming !== 'boolean' || typeof parsed.capabilities.pushNotifications !== 'boolean') {
-        return {
-          isValid: false,
-          error: 'Capabilities streaming and pushNotifications must be boolean values'
-        };
-      }
-
-      // Validate input/output modes
-      if (!Array.isArray(parsed.defaultInputModes) || !Array.isArray(parsed.defaultOutputModes)) {
-        return {
-          isValid: false,
-          error: 'defaultInputModes and defaultOutputModes must be arrays'
-        };
-      }
-
-      return {
-        isValid: true,
-        agentCard: parsed as AgentCard
-      };
-    } catch (error) {
-      return {
-        isValid: false,
-        error: error instanceof Error ? error.message : 'Invalid JSON format'
-      };
-    }
   };
 
   // Handle file upload
@@ -328,7 +271,7 @@ const AgentRegistrationModal: React.FC<AgentRegistrationModalProps> = ({
                 <SpaceBetween direction="vertical" size="xs">
                   <div><strong>Name:</strong> {parsedAgentCard.name}</div>
                   <div><strong>Version:</strong> {parsedAgentCard.version}</div>
-                  <div><strong>Skills:</strong> {Array.isArray(parsedAgentCard.skills) ? parsedAgentCard.skills.length : 0} skill(s)</div>
+                  <div><strong>Skills:</strong> {getSkillCount(parsedAgentCard.skills)} skill(s)</div>
                   <div><strong>Description:</strong> {parsedAgentCard.description}</div>
                 </SpaceBetween>
               </Alert>
@@ -339,7 +282,7 @@ const AgentRegistrationModal: React.FC<AgentRegistrationModalProps> = ({
         <Container
           header={
             <Header variant="h3">
-              AgentCard Format Requirements
+              AgentCard Format Requirements (A2A Protocol)
             </Header>
           }
         >
@@ -347,12 +290,18 @@ const AgentRegistrationModal: React.FC<AgentRegistrationModalProps> = ({
             <div><strong>Required Fields:</strong></div>
             <ul style={{ marginLeft: '20px' }}>
               <li>name, description, version, url</li>
-              <li>protocolVersion, preferredTransport</li>
-              <li>skills (array of skill objects)</li>
-              <li>capabilities (object with streaming and pushNotifications booleans)</li>
-              <li>defaultInputModes, defaultOutputModes (arrays)</li>
+              <li>capabilities (object)</li>
+              <li>defaultInputModes, defaultOutputModes (arrays of MIME types)</li>
+              <li>skills (array of AgentSkill objects)</li>
             </ul>
-            <div><strong>Skills:</strong> Array of skill names as strings (e.g., ["python", "web-development"])</div>
+            <div><strong>AgentSkill Object:</strong></div>
+            <ul style={{ marginLeft: '20px' }}>
+              <li>id (string) - unique identifier</li>
+              <li>name (string) - human-readable name</li>
+              <li>description (string) - what the skill does</li>
+              <li>tags (array of strings) - keywords for the skill</li>
+            </ul>
+            <div><strong>Optional Fields:</strong> protocolVersion, preferredTransport, provider, iconUrl, documentationUrl</div>
           </SpaceBetween>
         </Container>
       </SpaceBetween>

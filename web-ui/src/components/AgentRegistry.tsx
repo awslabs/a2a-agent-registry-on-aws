@@ -186,7 +186,7 @@ const AgentRegistry: React.FC<AgentRegistryProps> = ({ onRegisterAgent }) => {
           <SpaceBetween direction="horizontal" size="xs">
             {(item.agent_card.skills || []).slice(0, 4).map((skill, index) => (
               <Badge key={index} color="blue">
-                {typeof skill === 'string' ? skill : skill.name}
+                {skill.name}
               </Badge>
             ))}
             {(item.agent_card.skills || []).length > 4 && (

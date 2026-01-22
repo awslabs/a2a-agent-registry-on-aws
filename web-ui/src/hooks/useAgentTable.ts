@@ -177,13 +177,9 @@ export const useAgentTable = (options: UseAgentTableOptions = {}) => {
             const skillSearchValue = value.toLowerCase();
             
             const skillMatches = skills.some(skill => {
-              if (typeof skill === 'string') {
-                return skill.toLowerCase().includes(skillSearchValue);
-              } else {
-                return skill.name?.toLowerCase().includes(skillSearchValue) ||
-                       skill.description?.toLowerCase().includes(skillSearchValue) ||
-                       skill.tags?.some(tag => tag.toLowerCase().includes(skillSearchValue));
-              }
+              return skill.name?.toLowerCase().includes(skillSearchValue) ||
+                     skill.description?.toLowerCase().includes(skillSearchValue) ||
+                     skill.tags?.some(tag => tag.toLowerCase().includes(skillSearchValue));
             });
             
             switch (operator) {
@@ -195,22 +191,10 @@ export const useAgentTable = (options: UseAgentTableOptions = {}) => {
                 return !skillMatches;
               case '=':
               case 'equals':
-                return skills.some(skill => {
-                  if (typeof skill === 'string') {
-                    return skill.toLowerCase() === skillSearchValue;
-                  } else {
-                    return skill.name?.toLowerCase() === skillSearchValue;
-                  }
-                });
+                return skills.some(skill => skill.name?.toLowerCase() === skillSearchValue);
               case '!=':
               case 'does-not-equal':
-                return !skills.some(skill => {
-                  if (typeof skill === 'string') {
-                    return skill.toLowerCase() === skillSearchValue;
-                  } else {
-                    return skill.name?.toLowerCase() === skillSearchValue;
-                  }
-                });
+                return !skills.some(skill => skill.name?.toLowerCase() === skillSearchValue);
               default:
                 return skillMatches;
             }

@@ -1,8 +1,7 @@
 import { AgentRegistryClient } from "./AgentRegistryClient";
 import { AgentCard } from "../types/AgentCard";
 
-// Mock AWS SDK
-const mockExecuteApi = jest.fn();
+// Mock AWS SDK v3 modules
 const mockCredentials = {
   accessKeyId: "test-access-key",
   secretAccessKey: "test-secret-key",
@@ -10,27 +9,21 @@ const mockCredentials = {
 };
 
 jest.mock("@aws-sdk/credential-providers", () => ({
-  fromCognitoIdentityPool: jest.fn(() => mockCredentials),
-  fromWebToken: jest.fn(() => mockCredentials),
-}));
-
-jest.mock("aws-sdk", () => ({
-  config: {
-    update: jest.fn(),
-  },
-  APIGateway: jest.fn().mockImplementation(() => ({
-    executeApi: mockExecuteApi,
-  })),
+  fromCognitoIdentityPool: jest.fn(() => () => Promise.resolve(mockCredentials)),
 }));
 
 // Mock signature v4
 jest.mock("@aws-sdk/signature-v4", () => ({
   SignatureV4: jest.fn().mockImplementation(() => ({
     sign: jest.fn().mockResolvedValue({
+      method: "GET",
       headers: {
         Authorization: "AWS4-HMAC-SHA256 test-signature",
         "X-Amz-Date": "20240115T120000Z",
+        "Content-Type": "application/json",
+        Accept: "application/json",
       },
+      body: undefined,
     }),
   })),
 }));
@@ -45,9 +38,13 @@ describe("AgentRegistryClient", () => {
   const mockAgent: AgentCard = {
     name: "Test Agent",
     description: "A test agent",
+    version: "1.0.0",
     url: "https://api.example.com/agent",
     protocolVersion: "1.0.0",
-    skills: [{ id: "test-skill", name: "test", description: "Test skill" }],
+    capabilities: {},
+    defaultInputModes: ["text/plain"],
+    defaultOutputModes: ["text/plain"],
+    skills: [{ id: "test-skill", name: "test", description: "Test skill", tags: ["test"] }],
   };
 
   beforeEach(() => {
@@ -387,7 +384,11 @@ describe("AgentRegistryClient", () => {
     test("updates agent successfully", async () => {
       const updateData = {
         name: "Updated Agent Name",
-        skills: ["python", "testing", "new-skill"],
+        skills: [
+          { id: "skill-0", name: "python", description: "Python programming", tags: ["python"] },
+          { id: "skill-1", name: "testing", description: "Software testing", tags: ["testing"] },
+          { id: "skill-2", name: "new-skill", description: "New skill", tags: ["new"] }
+        ],
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
