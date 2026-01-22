@@ -1,48 +1,18 @@
-// TypeScript interfaces matching the A2A Protocol AgentCard structure
+// Re-export A2A Protocol types from @a2a-js/sdk as the source of truth
+export type {
+  AgentCard,
+  AgentSkill,
+  AgentCapabilities,
+  AgentProvider,
+  AgentInterface,
+  AgentCardSignature,
+  SecurityScheme,
+} from '@a2a-js/sdk';
 
-export interface AgentProvider {
-  organization?: string;
-  url?: string;
-}
+// Import types for use in local interfaces
+import type { AgentCard } from '@a2a-js/sdk';
 
-export interface AgentCapabilities {
-  extensions?: string[];
-  pushNotifications?: boolean;
-  stateTransitionHistory?: boolean;
-  streaming?: boolean;
-}
-
-export interface AgentSkill {
-  id: string;
-  name: string;
-  description?: string;
-  examples?: string[];
-  inputModes?: string[];
-  outputModes?: string[];
-  security?: any[];
-  tags?: string[];
-}
-
-export interface AgentCard {
-  name: string;
-  description?: string;
-  protocolVersion: string;
-  url: string;
-  version?: string;
-  preferredTransport?: string;
-  provider?: AgentProvider;
-  capabilities?: AgentCapabilities;
-  skills?: AgentSkill[] | string[]; // Support both formats: objects (A2A standard) and strings (current server validation)
-  iconUrl?: string;
-  documentationUrl?: string;
-  additionalInterfaces?: any[];
-  defaultInputModes?: string[];
-  defaultOutputModes?: string[];
-  security?: any[];
-  securitySchemes?: Record<string, any>;
-  signatures?: any[];
-  supportsAuthenticatedExtendedCard?: boolean;
-}
+// Application-specific types that extend the A2A protocol types
 
 export interface Agent {
   agent_id: string;

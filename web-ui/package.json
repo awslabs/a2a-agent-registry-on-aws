@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@a2a-js/sdk": "^0.3.9",
+    "@anthropic-ai/sdk": "^0.71.2",
     "@aws-amplify/auth": "^5.6.0",
     "@aws-amplify/core": "^5.8.0",
     "@aws-crypto/sha256-js": "^5.2.0",

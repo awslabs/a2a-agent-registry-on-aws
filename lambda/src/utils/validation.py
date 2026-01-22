@@ -1,10 +1,11 @@
 """
-Input validation utilities
+Input validation utilities using a2a-sdk AgentCard type validation
 """
 import re
 import uuid
-from typing import Dict, Any, List, Optional
-from a2a.types import AgentCard
+from typing import Dict, Any, List, Optional, Union
+from a2a.types import AgentCard, AgentCapabilities, AgentSkill
+from pydantic import ValidationError as PydanticValidationError
 
 
 class ValidationError(Exception):
@@ -40,15 +41,58 @@ def validate_uuid(value: str, field_name: str) -> str:
         raise ValidationError(field_name, "Invalid UUID format")
 
 
-def validate_agent_card(data: Dict[str, Any]) -> AgentCard:
+def _convert_skills_to_agent_skills(skills: List[Any]) -> List[Dict[str, Any]]:
     """
-    Validate and create AgentCard from input data
+    Convert skills input to AgentSkill format expected by a2a-sdk.
+    
+    Handles both string skills (legacy format) and dict skills (a2a format).
+    
+    Args:
+        skills: List of skills (strings or dicts)
+        
+    Returns:
+        List of AgentSkill-compatible dicts
+    """
+    converted_skills = []
+    for i, skill in enumerate(skills):
+        if isinstance(skill, str):
+            # Convert string skill to AgentSkill format
+            skill_str = skill.strip()
+            if skill_str:
+                converted_skills.append({
+                    "id": f"skill-{i}",
+                    "name": skill_str,
+                    "description": skill_str,
+                    "tags": [skill_str.lower()]
+                })
+        elif isinstance(skill, dict):
+            # Ensure required fields for AgentSkill
+            skill_dict = {
+                "id": skill.get("id", f"skill-{i}"),
+                "name": skill.get("name", ""),
+                "description": skill.get("description", skill.get("name", "")),
+                "tags": skill.get("tags", [])
+            }
+            # Add optional fields if present
+            if "examples" in skill:
+                skill_dict["examples"] = skill["examples"]
+            if "inputModes" in skill:
+                skill_dict["inputModes"] = skill["inputModes"]
+            if "outputModes" in skill:
+                skill_dict["outputModes"] = skill["outputModes"]
+            converted_skills.append(skill_dict)
+    return converted_skills
+
+
+def validate_agent_card(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Validate agent card data using a2a-sdk AgentCard type.
     
     Args:
         data: Raw input data
         
     Returns:
-        Validated AgentCard instance
+        Validated agent card data as dict
         
     Raises:
         ValidationError: If validation fails
@@ -56,117 +100,45 @@ def validate_agent_card(data: Dict[str, Any]) -> AgentCard:
     if not isinstance(data, dict):
         raise ValidationError("agent_card", "Agent card data must be a dictionary")
     
-    # Basic required field validation
-    required_fields = ["name", "description", "version", "url"]
-    for field in required_fields:
-        if field not in data or not data[field]:
-            raise ValidationError(field, f"Field '{field}' is required")
+    # Prepare data for AgentCard validation
+    agent_card_data = dict(data)
     
-    # Validate name
-    name = data.get("name", "").strip()
-    if not name or len(name) < 2:
-        raise ValidationError("name", "Name must be at least 2 characters long")
+    # Set defaults for optional fields
+    if "capabilities" not in agent_card_data:
+        agent_card_data["capabilities"] = {}
     
-    if len(name) > 100:
-        raise ValidationError("name", "Name must be less than 100 characters")
+    if "defaultInputModes" not in agent_card_data:
+        agent_card_data["defaultInputModes"] = ["text"]
     
-    # Validate description
-    description = data.get("description", "").strip()
-    if not description or len(description) < 10:
-        raise ValidationError("description", "Description must be at least 10 characters long")
+    if "defaultOutputModes" not in agent_card_data:
+        agent_card_data["defaultOutputModes"] = ["text"]
     
-    if len(description) > 1000:
-        raise ValidationError("description", "Description must be less than 1000 characters")
+    if "skills" not in agent_card_data:
+        agent_card_data["skills"] = []
     
-    # Validate version (required)
-    version = data.get("version", "").strip()
-    if not version:
-        raise ValidationError("version", "Version is required")
-    
-    # Basic semantic version validation
-    version_pattern = r'^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$'
-    if not re.match(version_pattern, version):
-        raise ValidationError("version", "Version must follow semantic versioning (e.g., 1.0.0)")
-    
-    # Validate URL (required)
-    url = data.get("url", "").strip()
-    if not url:
-        raise ValidationError("url", "URL is required")
-    
-    # Basic URL validation
-    url_pattern = r'^https?://[^\s/$.?#].[^\s]*$'
-    if not re.match(url_pattern, url):
-        raise ValidationError("url", "URL must be a valid HTTP/HTTPS URL")
-    
-    # Validate protocolVersion (optional, defaults to "0.3.0")
-    protocol_version = data.get("protocolVersion", "0.3.0")
-    if not isinstance(protocol_version, str) or not protocol_version.strip():
-        raise ValidationError("protocolVersion", "Protocol version must be a non-empty string")
-    
-    # Validate preferredTransport (optional, defaults to "JSONRPC")
-    preferred_transport = data.get("preferredTransport", "JSONRPC")
-    valid_transports = ["JSONRPC", "HTTP", "WebSocket"]
-    if preferred_transport not in valid_transports:
-        raise ValidationError("preferredTransport", f"Preferred transport must be one of: {valid_transports}")
-    
-    # Validate capabilities (optional)
-    capabilities = data.get("capabilities", {})
-    if not isinstance(capabilities, dict):
-        raise ValidationError("capabilities", "Capabilities must be a dictionary")
-    
-    # Validate streaming capability
-    if "streaming" in capabilities:
-        if not isinstance(capabilities["streaming"], bool):
-            raise ValidationError("capabilities.streaming", "Streaming capability must be a boolean")
-    
-    # Validate defaultInputModes (optional, defaults to ["text"])
-    default_input_modes = data.get("defaultInputModes", ["text"])
-    if not isinstance(default_input_modes, list):
-        raise ValidationError("defaultInputModes", "Default input modes must be a list")
-    
-    valid_modes = ["text", "image", "audio", "video", "file"]
-    for i, mode in enumerate(default_input_modes):
-        if not isinstance(mode, str) or mode not in valid_modes:
-            raise ValidationError("defaultInputModes", f"Input mode at index {i} must be one of: {valid_modes}")
-    
-    # Validate defaultOutputModes (optional, defaults to ["text"])
-    default_output_modes = data.get("defaultOutputModes", ["text"])
-    if not isinstance(default_output_modes, list):
-        raise ValidationError("defaultOutputModes", "Default output modes must be a list")
-    
-    for i, mode in enumerate(default_output_modes):
-        if not isinstance(mode, str) or mode not in valid_modes:
-            raise ValidationError("defaultOutputModes", f"Output mode at index {i} must be one of: {valid_modes}")
-    
-    # Validate skills (optional, defaults to empty list)
-    skills = data.get("skills", [])
-    if not isinstance(skills, list):
-        raise ValidationError("skills", "Skills must be a list")
-    
-    for i, skill in enumerate(skills):
-        if not isinstance(skill, str) or not skill.strip():
-            raise ValidationError("skills", f"Skill at index {i} must be a non-empty string")
-    
-    # Create validated agent card with defaults
-    validated_data = {
-        "name": name,
-        "description": description,
-        "version": version,
-        "url": url,
-        "protocolVersion": protocol_version,
-        "preferredTransport": preferred_transport,
-        "capabilities": capabilities,
-        "defaultInputModes": default_input_modes,
-        "defaultOutputModes": default_output_modes,
-        "skills": skills
-    }
+    # Convert skills to AgentSkill format
+    agent_card_data["skills"] = _convert_skills_to_agent_skills(agent_card_data["skills"])
     
     try:
-        # TODO: Use a2a-sdk AgentCard validation when available
-        # For now, return the validated data as a dict
-        # This will be replaced with proper AgentCard instantiation in task 5
+        # Validate using a2a-sdk AgentCard
+        agent_card = AgentCard.model_validate(agent_card_data)
+        
+        # Convert back to dict for storage, preserving the validated structure
+        validated_data = agent_card.model_dump(exclude_none=True)
+        
         return validated_data
-    except Exception as e:
+        
+    except PydanticValidationError as e:
+        # Extract first error for user-friendly message
+        errors = e.errors()
+        if errors:
+            first_error = errors[0]
+            field = ".".join(str(loc) for loc in first_error.get("loc", ["agent_card"]))
+            message = first_error.get("msg", "Validation failed")
+            raise ValidationError(field, message, {"all_errors": [
+                {"field": ".".join(str(loc) for loc in err.get("loc", [])), "message": err.get("msg", "")}
+                for err in errors
+            ]})
         raise ValidationError("agent_card", f"AgentCard validation failed: {str(e)}")
 
 
@@ -230,7 +202,10 @@ def validate_search_params(text_query: Optional[str] = None, skills: Optional[Li
 
 def validate_agent_card_update(data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Validate agent card update data (partial updates allowed)
+    Validate agent card update data (partial updates allowed).
+    
+    For partial updates, we validate individual fields without requiring
+    all AgentCard fields to be present.
     
     Args:
         data: Raw update data (can be partial)
@@ -251,119 +226,94 @@ def validate_agent_card_update(data: Dict[str, Any]) -> Dict[str, Any]:
     
     # Validate name (if provided)
     if "name" in data:
-        name = data.get("name", "").strip()
-        if not name or len(name) < 2:
-            raise ValidationError("name", "Name must be at least 2 characters long")
-        
-        if len(name) > 100:
-            raise ValidationError("name", "Name must be less than 100 characters")
-        
-        validated_data["name"] = name
+        name = data.get("name")
+        if not isinstance(name, str) or not name.strip():
+            raise ValidationError("name", "Name must be a non-empty string")
+        validated_data["name"] = name.strip()
     
     # Validate description (if provided)
     if "description" in data:
-        description = data.get("description", "").strip()
-        if not description or len(description) < 10:
-            raise ValidationError("description", "Description must be at least 10 characters long")
-        
-        if len(description) > 1000:
-            raise ValidationError("description", "Description must be less than 1000 characters")
-        
-        validated_data["description"] = description
+        description = data.get("description")
+        if not isinstance(description, str) or not description.strip():
+            raise ValidationError("description", "Description must be a non-empty string")
+        validated_data["description"] = description.strip()
     
     # Validate version (if provided)
     if "version" in data:
-        version = data.get("version", "").strip()
-        if not version:
-            raise ValidationError("version", "Version cannot be empty")
-        
-        # Basic semantic version validation
-        version_pattern = r'^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?$'
-        if not re.match(version_pattern, version):
-            raise ValidationError("version", "Version must follow semantic versioning (e.g., 1.0.0)")
-        
-        validated_data["version"] = version
+        version = data.get("version")
+        if not isinstance(version, str) or not version.strip():
+            raise ValidationError("version", "Version must be a non-empty string")
+        validated_data["version"] = version.strip()
     
     # Validate URL (if provided)
     if "url" in data:
-        url = data.get("url", "").strip()
-        if not url:
-            raise ValidationError("url", "URL cannot be empty")
-        
-        # Basic URL validation
+        url = data.get("url")
+        if not isinstance(url, str) or not url.strip():
+            raise ValidationError("url", "URL must be a non-empty string")
+        url = url.strip()
         url_pattern = r'^https?://[^\s/$.?#].[^\s]*$'
         if not re.match(url_pattern, url):
             raise ValidationError("url", "URL must be a valid HTTP/HTTPS URL")
-        
         validated_data["url"] = url
     
     # Validate protocolVersion (if provided)
     if "protocolVersion" in data:
-        protocol_version = data.get("protocolVersion", "").strip()
-        if not protocol_version:
-            raise ValidationError("protocolVersion", "Protocol version cannot be empty")
-        
-        validated_data["protocolVersion"] = protocol_version
+        protocol_version = data.get("protocolVersion")
+        if not isinstance(protocol_version, str) or not protocol_version.strip():
+            raise ValidationError("protocolVersion", "Protocol version must be a non-empty string")
+        validated_data["protocolVersion"] = protocol_version.strip()
     
     # Validate preferredTransport (if provided)
     if "preferredTransport" in data:
         preferred_transport = data.get("preferredTransport")
-        valid_transports = ["JSONRPC", "HTTP", "WebSocket"]
-        if preferred_transport not in valid_transports:
-            raise ValidationError("preferredTransport", f"Preferred transport must be one of: {valid_transports}")
-        
+        if not isinstance(preferred_transport, str):
+            raise ValidationError("preferredTransport", "Preferred transport must be a string")
         validated_data["preferredTransport"] = preferred_transport
     
     # Validate capabilities (if provided)
     if "capabilities" in data:
-        capabilities = data.get("capabilities", {})
+        capabilities = data.get("capabilities")
         if not isinstance(capabilities, dict):
             raise ValidationError("capabilities", "Capabilities must be a dictionary")
-        
-        # Validate streaming capability
-        if "streaming" in capabilities:
-            if not isinstance(capabilities["streaming"], bool):
-                raise ValidationError("capabilities.streaming", "Streaming capability must be a boolean")
-        
-        validated_data["capabilities"] = capabilities
+        # Validate using AgentCapabilities
+        try:
+            AgentCapabilities.model_validate(capabilities)
+            validated_data["capabilities"] = capabilities
+        except PydanticValidationError as e:
+            errors = e.errors()
+            if errors:
+                first_error = errors[0]
+                field = "capabilities." + ".".join(str(loc) for loc in first_error.get("loc", []))
+                raise ValidationError(field, first_error.get("msg", "Invalid capabilities"))
+            raise ValidationError("capabilities", "Invalid capabilities format")
     
     # Validate defaultInputModes (if provided)
     if "defaultInputModes" in data:
-        default_input_modes = data.get("defaultInputModes", [])
+        default_input_modes = data.get("defaultInputModes")
         if not isinstance(default_input_modes, list):
             raise ValidationError("defaultInputModes", "Default input modes must be a list")
-        
-        valid_modes = ["text", "image", "audio", "video", "file"]
         for i, mode in enumerate(default_input_modes):
-            if not isinstance(mode, str) or mode not in valid_modes:
-                raise ValidationError("defaultInputModes", f"Input mode at index {i} must be one of: {valid_modes}")
-        
+            if not isinstance(mode, str):
+                raise ValidationError("defaultInputModes", f"Input mode at index {i} must be a string")
         validated_data["defaultInputModes"] = default_input_modes
     
     # Validate defaultOutputModes (if provided)
     if "defaultOutputModes" in data:
-        default_output_modes = data.get("defaultOutputModes", [])
+        default_output_modes = data.get("defaultOutputModes")
         if not isinstance(default_output_modes, list):
             raise ValidationError("defaultOutputModes", "Default output modes must be a list")
-        
-        valid_modes = ["text", "image", "audio", "video", "file"]
         for i, mode in enumerate(default_output_modes):
-            if not isinstance(mode, str) or mode not in valid_modes:
-                raise ValidationError("defaultOutputModes", f"Output mode at index {i} must be one of: {valid_modes}")
-        
+            if not isinstance(mode, str):
+                raise ValidationError("defaultOutputModes", f"Output mode at index {i} must be a string")
         validated_data["defaultOutputModes"] = default_output_modes
     
     # Validate skills (if provided)
     if "skills" in data:
-        skills = data.get("skills", [])
+        skills = data.get("skills")
         if not isinstance(skills, list):
             raise ValidationError("skills", "Skills must be a list")
-        
-        for i, skill in enumerate(skills):
-            if not isinstance(skill, str) or not skill.strip():
-                raise ValidationError("skills", f"Skill at index {i} must be a non-empty string")
-        
-        validated_data["skills"] = skills
+        # Convert and validate skills
+        validated_data["skills"] = _convert_skills_to_agent_skills(skills)
     
     return validated_data
 

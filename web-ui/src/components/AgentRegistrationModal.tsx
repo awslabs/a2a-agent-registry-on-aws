@@ -14,6 +14,7 @@ import {
 } from '@cloudscape-design/components';
 import { AgentCard } from '../types/AgentCard';
 import { useAgentRegistry } from '../contexts/AgentRegistryContext';
+import { validateAgentCard, getSkillCount } from '../utils/agentCardValidation';
 
 interface AgentRegistrationModalProps {
   visible: boolean;
