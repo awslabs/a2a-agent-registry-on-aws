@@ -82,7 +82,6 @@ const AgentRegistry: React.FC<AgentRegistryProps> = ({ onRegisterAgent }) => {
 
   // Handle viewing agent card JSON
   const handleViewJson = (agent: Agent) => {
-    console.log('Opening JSON modal for agent:', agent.agent_card.name);
     setSelectedAgentCard(agent);
     setJsonModalVisible(true);
   };
@@ -92,8 +91,6 @@ const AgentRegistry: React.FC<AgentRegistryProps> = ({ onRegisterAgent }) => {
     try {
       const jsonString = JSON.stringify(agent.agent_card, null, 2);
       await navigator.clipboard.writeText(jsonString);
-      console.log('JSON copied to clipboard for agent:', agent.agent_card.name);
-      // You could add a toast notification here if available
     } catch (err) {
       console.error('Failed to copy JSON:', err);
       // Fallback: create a temporary textarea and copy
@@ -103,20 +100,17 @@ const AgentRegistry: React.FC<AgentRegistryProps> = ({ onRegisterAgent }) => {
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      console.log('JSON copied using fallback method');
     }
   };
 
   // Handle editing agent
   const handleEditAgent = (agent: Agent) => {
-    console.log('Opening edit modal for agent:', agent.agent_card.name);
     setEditingAgent(agent);
     setEditModalVisible(true);
   };
 
   // Handle edit success
   const handleEditSuccess = () => {
-    console.log('Agent updated successfully');
     // Refresh the table to reflect the changes
     refresh();
   };
@@ -132,21 +126,18 @@ const AgentRegistry: React.FC<AgentRegistryProps> = ({ onRegisterAgent }) => {
       
       // Call the actual delete API using the client from context
       if (!client) {
-        console.error('API client not available');
         return;
       }
       
       const success = await client.deleteAgent(agent.agent_id);
       
       if (success) {
-        console.log('Agent deleted successfully:', agent.agent_id);
         // Refresh the table to reflect the deletion
         refresh();
       } else {
         throw new Error('Delete operation returned false');
       }
     } catch (error) {
-      console.error('Failed to delete agent:', error);
       // You could show an error notification here
       alert(`Failed to delete agent: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {

@@ -137,21 +137,12 @@ export class AgentRegistryClient {
   public async updateCredentials(credentials?: any): Promise<void> {
     try {
       if (credentials) {
-        console.log("Updating credentials:", {
-          accessKeyId: credentials.accessKeyId?.substring(0, 10) + "...",
-          secretAccessKey: credentials.secretAccessKey ? "***" : "missing",
-          sessionToken: credentials.sessionToken?.substring(0, 20) + "...",
-          expiration: credentials.expiration,
-        });
-
         this.signer = new SignatureV4({
           credentials: () => Promise.resolve(credentials),
           region: this.region,
           service: "execute-api",
           sha256: Sha256,
         });
-
-        console.log("Signer created successfully");
       }
     } catch (error) {
       console.error("Failed to update credentials:", error);
@@ -214,7 +205,6 @@ export class AgentRegistryClient {
 
     if (this.signer && !isUsingProxy) {
       try {
-        console.log("Signing request:", method, path);
         const parsedUrl = new URL(url.toString());
 
         // Construct headers with Host header explicitly set
@@ -234,13 +224,6 @@ export class AgentRegistryClient {
           body: requestInit.body,
         });
 
-        console.log("Request to sign:", {
-          method: httpRequest.method,
-          hostname: httpRequest.hostname,
-          path: httpRequest.path,
-          headers: Object.keys(httpRequest.headers || {}),
-        });
-
         // Ensure Host header is included in signed headers
         const signedRequest = await this.signer.sign(httpRequest, {
           signingDate: new Date(),
@@ -248,11 +231,6 @@ export class AgentRegistryClient {
           signingService: "execute-api",
           unsignableHeaders: new Set(), // Don't exclude any headers from signing
         });
-
-        console.log(
-          "Request signed successfully, headers:",
-          Object.keys(signedRequest.headers || {})
-        );
 
         requestInit = {
           method: signedRequest.method,

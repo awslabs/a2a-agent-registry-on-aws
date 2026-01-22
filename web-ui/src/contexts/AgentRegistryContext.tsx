@@ -79,24 +79,18 @@ export const AgentRegistryProvider: React.FC<AgentRegistryProviderProps> = ({ ch
         // If user is authenticated, update client credentials
         if (isAuthenticated) {
           try {
-            console.log('Getting credentials for authenticated user...');
             const credentials = await getCredentials();
-            console.log('Credentials obtained, updating client...');
             await newClient.updateCredentials(credentials);
-            console.log('Client credentials updated successfully');
           } catch (credError) {
             console.error('Failed to get credentials for API client:', credError);
             setError('Failed to get AWS credentials. Please try refreshing the page.');
             setIsReady(true);
             return;
           }
-        } else {
-          console.log('User not authenticated, client will use unsigned requests');
         }
 
         setClient(newClient);
         setIsReady(true);
-        console.log('Agent Registry client initialized successfully');
       } catch (initError: any) {
         console.error('Failed to initialize Agent Registry client:', initError);
         setError(initError.message || 'Failed to initialize API client');

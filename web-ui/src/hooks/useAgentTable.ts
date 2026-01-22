@@ -48,14 +48,12 @@ export const useAgentTable = (options: UseAgentTableOptions = {}) => {
         let total = 0;
 
         if (!client) {
-          console.log('Agent registry client not yet initialized, skipping load');
           setLoading(false);
           return;
         }
 
         if (searchQuery.trim()) {
           // Use search API when there's a search query
-          console.log('Loading agents with search query:', searchQuery);
           const searchResults = await client.searchAgents(
             searchQuery,
             undefined,
@@ -74,7 +72,6 @@ export const useAgentTable = (options: UseAgentTableOptions = {}) => {
           total = transformedAgents.length;
         } else {
           // Use list API when no search query
-          console.log('Loading agents with list API, page:', page, 'pageSize:', pageSize);
           const offset = (page - 1) * pageSize;
           const response = await client.listAgents(pageSize, offset);
 
@@ -281,7 +278,6 @@ export const useAgentTable = (options: UseAgentTableOptions = {}) => {
   // Load agents when client is ready
   useEffect(() => {
     if (isReady && client) {
-      console.log('Client is ready, loading agents...');
       loadAgents();
     }
   }, [isReady, client]); // eslint-disable-line react-hooks/exhaustive-deps

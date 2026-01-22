@@ -260,7 +260,6 @@ export class AuthService {
   public signInWithHostedUI(): void {
     // For Amplify v5, we need to redirect directly to the hosted UI URL
     const hostedUIUrl = this.getHostedUIUrl();
-    console.log('Redirecting to hosted UI:', hostedUIUrl);
     window.location.href = hostedUIUrl;
   }
 }
