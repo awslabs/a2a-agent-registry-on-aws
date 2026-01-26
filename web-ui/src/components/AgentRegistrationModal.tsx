@@ -42,7 +42,6 @@ const AgentRegistrationModal: React.FC<AgentRegistrationModalProps> = ({
   const sampleAgentCard = {
     name: "Recipe Assistant Agent",
     description: "An AI agent that helps users find and prepare recipes based on available ingredients",
-    version: "1.2.0",
     url: "https://recipe-agent.example.com/api/v1",
     protocolVersion: "0.3.0",
     preferredTransport: "JSONRPC",
@@ -289,19 +288,19 @@ const AgentRegistrationModal: React.FC<AgentRegistrationModalProps> = ({
           <SpaceBetween direction="vertical" size="xs">
             <div><strong>Required Fields:</strong></div>
             <ul style={{ marginLeft: '20px' }}>
-              <li>name, description, version, url</li>
-              <li>capabilities (object)</li>
+              <li>name, description, url, protocolVersion</li>
+              <li>capabilities (object with streaming, pushNotifications booleans)</li>
               <li>defaultInputModes, defaultOutputModes (arrays of MIME types)</li>
               <li>skills (array of AgentSkill objects)</li>
             </ul>
-            <div><strong>AgentSkill Object:</strong></div>
+            <div><strong>AgentSkill Object (required fields):</strong></div>
             <ul style={{ marginLeft: '20px' }}>
               <li>id (string) - unique identifier</li>
               <li>name (string) - human-readable name</li>
               <li>description (string) - what the skill does</li>
               <li>tags (array of strings) - keywords for the skill</li>
             </ul>
-            <div><strong>Optional Fields:</strong> protocolVersion, preferredTransport, provider, iconUrl, documentationUrl</div>
+            <div><strong>Optional Fields:</strong> preferredTransport, provider, iconUrl, documentationUrl, additionalInterfaces, security, securitySchemes</div>
           </SpaceBetween>
         </Container>
       </SpaceBetween>

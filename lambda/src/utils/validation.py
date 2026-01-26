@@ -238,13 +238,6 @@ def validate_agent_card_update(data: Dict[str, Any]) -> Dict[str, Any]:
             raise ValidationError("description", "Description must be a non-empty string")
         validated_data["description"] = description.strip()
     
-    # Validate version (if provided)
-    if "version" in data:
-        version = data.get("version")
-        if not isinstance(version, str) or not version.strip():
-            raise ValidationError("version", "Version must be a non-empty string")
-        validated_data["version"] = version.strip()
-    
     # Validate URL (if provided)
     if "url" in data:
         url = data.get("url")
