@@ -458,6 +458,13 @@ def handler(event, context):
       exportName: `${this.stackName}-DistributionId`,
     });
 
+    new cdk.CfnOutput(this, "CloudFrontDomainName", {
+      value: `https://${this.distribution.distributionDomainName}`,
+      description:
+        "CloudFront Domain Name - use this as corsOrigin in AgentRegistryStack to restrict CORS",
+      exportName: `${this.stackName}-CloudFrontDomainName`,
+    });
+
     // CDK-NAG Suppressions
     NagSuppressions.addResourceSuppressions(
       authenticatedRole,

@@ -8,13 +8,26 @@ import { PythonFunction } from "@aws-cdk/aws-lambda-python-alpha";
 import { S3VectorsConstruct } from "./constructs/s3-vectors-construct";
 import { NagSuppressions } from "cdk-nag";
 
+export interface AgentRegistryStackProps extends cdk.StackProps {
+  /**
+   * The allowed CORS origin for the API Gateway.
+   * Use '*' to allow all origins (default), or specify a specific origin
+   * (e.g., 'https://d1234567890.cloudfront.net' or your custom domain).
+   * @default '*'
+   */
+  corsOrigin?: string;
+}
+
 export class AgentRegistryStack extends cdk.Stack {
   public readonly s3Vectors: S3VectorsConstruct;
   public readonly apiLambda: PythonFunction;
   public readonly api: apigateway.RestApi;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: AgentRegistryStackProps) {
     super(scope, id, props);
+
+    // CORS origin configuration - defaults to '*' (allow all)
+    const corsOrigin = props?.corsOrigin ?? "*";
 
     // Generate unique bucket name with account ID and region
     const bucketName = `agent-registry-vectors-${this.account}-${this.region}`;
@@ -152,7 +165,7 @@ export class AgentRegistryStack extends cdk.Stack {
       description:
         "API for managing and searching agent cards with semantic capabilities",
       defaultCorsPreflightOptions: {
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowOrigins: corsOrigin === "*" ? apigateway.Cors.ALL_ORIGINS : [corsOrigin],
         allowMethods: apigateway.Cors.ALL_METHODS,
         allowHeaders: [
           "Content-Type",
@@ -241,10 +254,13 @@ export class AgentRegistryStack extends cdk.Stack {
     });
 
     // Add CORS headers to error responses - force update
+    // Use configured corsOrigin for error responses
+    const corsAllowOrigin = corsOrigin === "*" ? "'*'" : `'${corsOrigin}'`;
+    
     this.api.addGatewayResponse("Default4XX", {
       type: apigateway.ResponseType.DEFAULT_4XX,
       responseHeaders: {
-        "Access-Control-Allow-Origin": "'*'",
+        "Access-Control-Allow-Origin": corsAllowOrigin,
         "Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amz-Content-Sha256,X-Amz-Target'",
         "Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'",
       },
@@ -253,7 +269,7 @@ export class AgentRegistryStack extends cdk.Stack {
     this.api.addGatewayResponse("Default5XX", {
       type: apigateway.ResponseType.DEFAULT_5XX,
       responseHeaders: {
-        "Access-Control-Allow-Origin": "'*'",
+        "Access-Control-Allow-Origin": corsAllowOrigin,
         "Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent,X-Amz-Content-Sha256,X-Amz-Target'",
         "Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'",
       },

@@ -120,6 +120,24 @@ The Web UI stack deploys:
 - Cognito User Pool for authentication
 - Cognito Identity Pool for AWS credentials
 
+> **Important: CORS Configuration**
+>
+> By default, the API allows cross-origin requests from any origin (`*`). You can restrict CORS to a specific domain by passing the `corsOrigin` parameter.
+>
+> **To restrict CORS to a specific origin:**
+> ```bash
+> # Using a custom domain
+> cdk deploy AgentRegistryStack -c corsOrigin=https://your-domain.com
+>
+> # Using the Web UI CloudFront domain (get from AgentRegistryWebUI stack output)
+> cdk deploy AgentRegistryStack -c corsOrigin=https://d1234567890.cloudfront.net
+> ```
+>
+> **To restrict CORS to only the Web UI:**
+> 1. Deploy `AgentRegistryStack` first
+> 2. Deploy `AgentRegistryWebUI` and note the `CloudFrontDomainName` output
+> 3. Update `AgentRegistryStack` with `-c corsOrigin=<CloudFrontDomainName>` to restrict CORS to only the Web UI
+
 ### Use the Python SDK
 
 ```python

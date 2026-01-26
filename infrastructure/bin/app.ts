@@ -12,9 +12,14 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION,
 };
 
+// Get CORS origin from context (can be passed via -c corsOrigin=https://example.com)
+// Defaults to '*' (allow all origins)
+const corsOrigin = app.node.tryGetContext('corsOrigin') as string | undefined;
+
 // Agent Registry API stack
 const agentRegistryStack = new AgentRegistryStack(app, 'AgentRegistryStack', {
   env,
+  corsOrigin,
 });
 
 // Web UI stack with CloudFront and Cognito
