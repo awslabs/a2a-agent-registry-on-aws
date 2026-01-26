@@ -5,7 +5,7 @@ import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
 import { PythonFunction } from "@aws-cdk/aws-lambda-python-alpha";
-import { S3VectorsConstruct } from "./constructs/s3-vectors-construct";
+import { s3vectors } from "@cdklabs/generative-ai-cdk-constructs";
 import { NagSuppressions } from "cdk-nag";
 
 export interface AgentRegistryStackProps extends cdk.StackProps {
@@ -19,7 +19,8 @@ export interface AgentRegistryStackProps extends cdk.StackProps {
 }
 
 export class AgentRegistryStack extends cdk.Stack {
-  public readonly s3Vectors: S3VectorsConstruct;
+  public readonly vectorBucket: s3vectors.VectorBucket;
+  public readonly vectorIndex: s3vectors.VectorIndex;
   public readonly apiLambda: PythonFunction;
   public readonly api: apigateway.RestApi;
 
@@ -31,32 +32,40 @@ export class AgentRegistryStack extends cdk.Stack {
 
     // Generate unique bucket name with account ID and region
     const bucketName = `agent-registry-vectors-${this.account}-${this.region}`;
+    const indexName = "agent-embeddings";
 
-    // S3 Vectors infrastructure for agent embeddings storage
-    // Uses custom resource Lambda since CDK doesn't have native S3 Vectors constructs
-    this.s3Vectors = new S3VectorsConstruct(this, "S3Vectors", {
-      bucketName: bucketName,
-      indexName: "agent-embeddings",
+    // S3 Vectors infrastructure using L2 CDK construct
+    this.vectorBucket = new s3vectors.VectorBucket(this, "VectorBucket", {
+      vectorBucketName: bucketName,
+      encryption: s3vectors.VectorBucketEncryption.S3_MANAGED,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+    });
+
+    // Create vector index for agent embeddings
+    this.vectorIndex = new s3vectors.VectorIndex(this, "VectorIndex", {
+      vectorBucket: this.vectorBucket,
+      vectorIndexName: indexName,
       dimension: 1024, // Standard embedding dimension for text models
-      distanceMetric: "cosine", // Cosine similarity for semantic search
+      distanceMetric: s3vectors.VectorIndexDistanceMetric.COSINE,
       nonFilterableMetadataKeys: ["raw_agent_card"], // Large metadata that shouldn't be filtered
     });
 
     // Stack outputs for other services to reference
     new cdk.CfnOutput(this, "S3VectorsBucketName", {
-      value: this.s3Vectors.vectorBucketName,
+      value: this.vectorBucket.vectorBucketName,
       description: "S3 Vectors bucket name for agent embeddings",
       exportName: `${this.stackName}-VectorBucketName`,
     });
 
     new cdk.CfnOutput(this, "S3VectorsIndexName", {
-      value: this.s3Vectors.vectorIndexName,
+      value: this.vectorIndex.vectorIndexName,
       description: "S3 Vectors index name for agent embeddings",
       exportName: `${this.stackName}-VectorIndexName`,
     });
 
     new cdk.CfnOutput(this, "S3VectorsBucketArn", {
-      value: this.s3Vectors.vectorBucketArn,
+      value: this.vectorBucket.vectorBucketArn,
       description: "ARN of the S3 Vectors bucket",
       exportName: `${this.stackName}-VectorBucketArn`,
     });
@@ -102,9 +111,7 @@ export class AgentRegistryStack extends cdk.Stack {
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
               actions: ["s3vectors:GetVectorBucket", "s3vectors:ListIndexes"],
-              resources: [
-                `arn:aws:s3vectors:${this.region}:${this.account}:bucket/${bucketName}`,
-              ],
+              resources: [this.vectorBucket.vectorBucketArn],
             }),
             // Vector index operations - scoped to specific index
             new iam.PolicyStatement({
@@ -117,9 +124,7 @@ export class AgentRegistryStack extends cdk.Stack {
                 "s3vectors:QueryVectors",
                 "s3vectors:ListVectors",
               ],
-              resources: [
-                `arn:aws:s3vectors:${this.region}:${this.account}:bucket/${bucketName}/index/${this.s3Vectors.vectorIndexName}`,
-              ],
+              resources: [this.vectorIndex.vectorIndexArn],
             }),
           ],
         }),
@@ -145,8 +150,8 @@ export class AgentRegistryStack extends cdk.Stack {
       description: "Agent Registry API Lambda function",
       logGroup: apiLambdaLogGroup,
       environment: {
-        S3_VECTORS_BUCKET_NAME: this.s3Vectors.vectorBucketName,
-        S3_VECTORS_INDEX_NAME: this.s3Vectors.vectorIndexName,
+        S3_VECTORS_BUCKET_NAME: this.vectorBucket.vectorBucketName,
+        S3_VECTORS_INDEX_NAME: this.vectorIndex.vectorIndexName,
         BEDROCK_MODEL_ID: "amazon.titan-embed-text-v2:0",
         LOG_LEVEL: "INFO",
       },
@@ -309,29 +314,82 @@ export class AgentRegistryStack extends cdk.Stack {
 
     // CDK-NAG Suppressions
 
-    // Suppress AWS managed policy usage and wildcard permissions for S3 Vectors custom resource
-    NagSuppressions.addResourceSuppressions(
-      this.s3Vectors,
+    // Suppress warnings for S3 Vectors auto-delete custom resource (from L2 construct)
+    NagSuppressions.addResourceSuppressionsByPath(
+      this,
+      [
+        "/AgentRegistryStack/S3VectorsAutoDeleteProvider-Custom::S3VectorsAutoDeleteObjects/Role/Resource",
+        "/AgentRegistryStack/S3VectorsAutoDeleteProvider-Custom::S3VectorsAutoDeleteObjects/Provider/framework-onEvent/ServiceRole/Resource",
+      ],
       [
         {
           id: "AwsSolutions-IAM4",
           reason:
-            "S3 Vectors custom resource Lambda uses AWS managed policy for basic execution. This is standard practice for CDK custom resources and provides minimal required permissions.",
+            "S3 Vectors L2 construct auto-delete custom resource uses AWS managed policy for basic Lambda execution. This is standard CDK custom resource pattern.",
+          appliesTo: [
+            "Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+          ],
         },
+      ]
+    );
+
+    NagSuppressions.addResourceSuppressionsByPath(
+      this,
+      "/AgentRegistryStack/S3VectorsAutoDeleteProvider-Custom::S3VectorsAutoDeleteObjects/Provider/framework-onEvent/ServiceRole/DefaultPolicy/Resource",
+      [
         {
           id: "AwsSolutions-IAM5",
           reason:
-            "S3 Vectors custom resource requires wildcard permissions for account-level operations like ListVectorBuckets, and region/account wildcards for bucket/index creation during CloudFormation lifecycle. S3 Vectors is a new service and requires these permissions for cross-region resource management. See: https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-vectors-security.html",
+            "S3 Vectors auto-delete provider requires invoke permission on handler Lambda with version wildcard for custom resource framework.",
           appliesTo: [
-            "Resource::*",
-            `Resource::arn:aws:s3vectors:*:*:bucket/${bucketName}`,
-            `Resource::arn:aws:s3vectors:*:*:bucket/${bucketName}/index/${this.s3Vectors.vectorIndexName}`,
-            `Resource::arn:aws:s3vectors:*:*:bucket/agent-registry-vectors-<AWS::AccountId>-us-east-1`,
-            `Resource::arn:aws:s3vectors:*:*:bucket/agent-registry-vectors-<AWS::AccountId>-us-east-1/index/agent-embeddings`,
+            "Resource::<S3VectorsAutoDeleteProviderCustomS3VectorsAutoDeleteObjectsHandler5A9860AE.Arn>:*",
           ],
         },
+      ]
+    );
+
+    NagSuppressions.addResourceSuppressionsByPath(
+      this,
+      [
+        "/AgentRegistryStack/S3VectorsAutoDeleteProvider-Custom::S3VectorsAutoDeleteObjects/Handler/Resource",
+        "/AgentRegistryStack/S3VectorsAutoDeleteProvider-Custom::S3VectorsAutoDeleteObjects/Provider/framework-onEvent/Resource",
       ],
-      true
+      [
+        {
+          id: "AwsSolutions-L1",
+          reason:
+            "Lambda runtime is managed by the @cdklabs/generative-ai-cdk-constructs L2 construct. Runtime updates will come with package updates.",
+        },
+      ]
+    );
+
+    // Suppress warnings for Log Retention custom resource (CDK internal)
+    NagSuppressions.addResourceSuppressionsByPath(
+      this,
+      "/AgentRegistryStack/LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole/Resource",
+      [
+        {
+          id: "AwsSolutions-IAM4",
+          reason:
+            "Log retention Lambda is a CDK internal construct that uses AWS managed policy for basic execution.",
+          appliesTo: [
+            "Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+          ],
+        },
+      ]
+    );
+
+    NagSuppressions.addResourceSuppressionsByPath(
+      this,
+      "/AgentRegistryStack/LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole/DefaultPolicy/Resource",
+      [
+        {
+          id: "AwsSolutions-IAM5",
+          reason:
+            "Log retention Lambda requires wildcard permissions to manage log groups across the account. This is a CDK internal construct.",
+          appliesTo: ["Resource::*"],
+        },
+      ]
     );
 
     // Suppress wildcard permissions for CloudWatch Logs - scoped to specific log group
