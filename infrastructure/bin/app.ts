@@ -20,11 +20,13 @@ const corsOrigin = app.node.tryGetContext('corsOrigin') as string | undefined;
 const agentRegistryStack = new AgentRegistryStack(app, 'AgentRegistryStack', {
   env,
   corsOrigin,
+  description: 'A2A Agent Registry API stack with S3 Vectors and API Gateway (uksb-7kqpd93zz4)',
 });
 
 // Web UI stack with CloudFront and Cognito
 const webUIStack = new AgentRegistryWebUI(app, 'AgentRegistryWebUI', {
   env,
+  description: 'A2A Agent Registry Web UI stack with CloudFront and Cognito (uksb-7kqpd93zz4)',
 });
 
 // Ensure Web UI stack depends on Agent Registry stack
