@@ -1,6 +1,7 @@
 """Unit tests for content-addressed AgentCard integrity (card_ref)."""
 
 import hashlib
+import json
 import re
 
 import pytest
@@ -51,9 +52,24 @@ class TestComputeCardRef:
         # Non-BMP (supplementary plane) key, combining char, integer-valued
         # float, and integer-string keys: json.dumps(sort_keys=True) would
         # diverge from other languages here; RFC 8785 does not.
-        edge = {"z": "é", "a": "\U0001f600", "2": 2.0, "1": 1}
+        edge = {"z": "\u00e9", "a": "\U0001f600", "2": 2.0, "1": 1}
         expected = CARD_REF_PREFIX + hashlib.sha256(rfc8785.dumps(edge)).hexdigest()
         assert compute_card_ref(edge) == expected
+
+    def test_supplementary_plane_key_uses_utf16_order_not_code_point(self):
+        # The sharp edge of canonicalization: a supplementary-plane (non-BMP)
+        # key alongside a BMP key. json.dumps(sort_keys=True) orders keys by
+        # code point, which puts U+FFFF before the emoji; RFC 8785 orders by
+        # UTF-16 code unit, which puts the emoji (first code unit 0xD83D) first.
+        # card_ref must follow RFC 8785, so it differs from a naive sort_keys
+        # hash of the same card. This is why "keys sorted ASC" is not enough.
+        card = {"\U0001f621": 2, "\uffff": 1}  # emoji U+1F621 key, U+FFFF key
+        assert compute_card_ref(card) == (
+            CARD_REF_PREFIX + hashlib.sha256(rfc8785.dumps(card)).hexdigest()
+        )
+        naive = json.dumps(card, sort_keys=True, ensure_ascii=False).encode("utf-8")
+        naive_ref = CARD_REF_PREFIX + hashlib.sha256(naive).hexdigest()
+        assert compute_card_ref(card) != naive_ref
 
     def test_any_change_changes_the_ref(self):
         tampered = dict(CARD)
