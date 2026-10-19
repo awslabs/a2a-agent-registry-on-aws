@@ -172,6 +172,10 @@ results = client.search_agents(skills=["python", "data-analysis"])
 results = client.search_agents(query="code review assistant", skills=["python"])
 ```
 
+## 🔒 Security Model
+
+The registry has no fine-grained access control. Every authenticated user (Cognito Web UI user or IAM principal with `execute-api:Invoke`) acts as an admin and can create, update, update health of, and delete any agent. Agents are not scoped to the user who registered them.
+
 ## 📚 Documentation
 
 | Document | Description |
