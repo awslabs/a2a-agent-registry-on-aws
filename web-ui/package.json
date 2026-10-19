@@ -2,6 +2,9 @@
   "name": "agent-registry-web-ui",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=24"
+  },
   "dependencies": {
     "@a2a-js/sdk": "^0.3.9",
     "@anthropic-ai/sdk": "^0.71.2",

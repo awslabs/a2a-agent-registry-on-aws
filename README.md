@@ -6,7 +6,7 @@
 <p align="center">
   <a href="https://github.com/awslabs/a2a-agent-registry-on-aws"><img alt="GitHub Repo" src="https://img.shields.io/badge/GitHub-Repo-green.svg" /></a>
   <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11+-blue.svg" />
-  <img alt="Node.js 18+" src="https://img.shields.io/badge/node.js-18+-green.svg" />
+  <img alt="Node.js 24 LTS" src="https://img.shields.io/badge/node.js-24_LTS-green.svg" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-CDK-blue.svg" />
   <img alt="React" src="https://img.shields.io/badge/React-18-61dafb.svg" />
 </p>
@@ -89,7 +89,7 @@ Optionally, deploy `AgentRegistryWebUI` for a React-based web interface with Cog
 ### Prerequisites
 
 - AWS CLI configured with appropriate permissions
-- Node.js 18+
+- Node.js 24 (LTS)
 - Python 3.11+
 - Docker (required by CDK to build Lambda and install dependencies)
 
