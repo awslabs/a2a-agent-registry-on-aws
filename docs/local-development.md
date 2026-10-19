@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Python 3.11+
-- Node.js 18+
+- Node.js 24 (LTS)
 - AWS CLI configured
 - uv (Python package manager)
 - Docker (optional, for Web UI containerization)
