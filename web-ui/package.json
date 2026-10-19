@@ -79,6 +79,12 @@
     "axios": "^1.13.5",
     "fast-xml-parser": "^4.5.4",
     "underscore": "^1.13.8",
-    "@tootallnate/once": "^3.0.1"
+    "@tootallnate/once": "^3.0.1",
+    "compression": "^1.8.2",
+    "fflate": "^0.7.5",
+    "qs": "^6.16.0",
+    "router": {
+      "path-to-regexp": "^8.4.0"
+    }
   }
 }
