@@ -243,11 +243,15 @@ def handle_get_agent(agent_id: str) -> Dict[str, Any]:
         
         if agent_card is None:
             raise APIError(404, 'AGENT_NOT_FOUND', f'Agent with ID {agent_id} not found')
-        
+
         logger.info(f"Retrieved agent with ID: {agent_id}")
-        
+
+        # Content-addressed reference over the served card, so a consumer can
+        # verify it matches the card the agent published (recompute and compare).
+        from utils.integrity import compute_card_ref
         return {
-            'agent': agent_card
+            'agent': agent_card,
+            'card_ref': compute_card_ref(agent_card)
         }
         
     except ValidationError as e:

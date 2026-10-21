@@ -1,1 +1,15 @@
 Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+------------------------------------------------------------------------
+
+This product includes the content-addressed AgentCard reference (card_ref)
+integrity primitive contributed by AlgoVoi:
+
+    card_ref = "sha256:" + SHA-256( RFC 8785 JCS( agent_card ) )
+
+The canonicalization uses RFC 8785 (JSON Canonicalization Scheme) so the
+reference is reproducible byte-for-byte across independent implementations.
+See lambda/src/utils/integrity.py.
+
+RFC 8785 canonicalization is provided by the "rfc8785" package
+(https://pypi.org/project/rfc8785), licensed under Apache-2.0.

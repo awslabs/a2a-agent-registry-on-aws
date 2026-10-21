@@ -1,3 +1,4 @@
 # Core dependencies
 boto3==1.42.32
 a2a-sdk==0.3.22
+rfc8785>=0.1.4  # RFC 8785 JCS canonicalization for content-addressed card_ref
